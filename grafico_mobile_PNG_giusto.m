@@ -19,6 +19,6 @@ for i=[1:round(n/100):n]
 %     xlabel('Distance (s)')
 %     ylabel('Height (deg)')
 %     %legend('Target','Missile')
-    pause(1);
+    pause(0.05);
     i
 end

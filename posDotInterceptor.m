@@ -15,13 +15,10 @@ function [dy] = posDotInterceptor(t,y)
 %this piece of code is added for compatibily. It's not the best thing in
 %the world...
 global tgtPos tgtTimes pos currentStep;
-aux=targetTrajectory(t);
-tgtPos(currentStep,:)=aux;
-tgtTimes(currentStep)=t;
-pos(currentStep,:)=(y(1:3))'; %BEWARE:Y COMES AS A COLOUMN VECTOR(?)
+
 
 lPos=pos(currentStep,:);
-lTgtPos=aux;
+lTgtPos=tgtPos(currentStep,:);
 lTargetVel=(tgtPos(currentStep,:)-tgtPos(currentStep-1,:))/(tgtTimes(currentStep)-tgtTimes(currentStep-1));
 %end of compatibility block
 %l (L) stands for local, in order not to use the same name as global

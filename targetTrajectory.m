@@ -4,11 +4,11 @@ function [tgt]=targetTrajectory(t)
 
 tgt=zeros(1,3);
 %uniform speed
-v=[1 2 3];
-vel=8.5;
-v=v./norm(v);
-tgt=t*v*vel;
-tgt=tgt+[10 0 0];
+% v=[1 2 3];
+% vel=8.5;
+% v=v./norm(v);
+% tgt=t*v*vel;
+% tgt=tgt+[10 0 0];
 
 %eg: target far away doing a circle
 %  w=0.3; R=15;
@@ -38,12 +38,12 @@ tgt=tgt+[10 0 0];
 % end
 
 %spiral
-%  w=5*2*pi/15; R=3; vAx=2;
-%  ax=[-3 2 6]; ax=ax/norm(ax);
-%  n1=[2.1633    1.2245    0.6735];
-%  n2=[0.8571   -2.1429    1.1429];
-%  tgt=ax*vAx*t + R*(n1*cos(w*t)+n2*sin(w*t));
-%  tgt=tgt./10;
-%  tgt=tgt+[10 0 0];
+ w=5*2*pi/15; R=3; vAx=2;
+ ax=[-3 2 6]; ax=ax/norm(ax);
+ n1=[2.1633    1.2245    0.6735];
+ n2=[0.8571   -2.1429    1.1429];
+ tgt=ax*vAx*t + R*(n1*cos(w*t)+n2*sin(w*t));
+ tgt=tgt./10;
+ tgt=tgt+[10 0 0];
 
 end
