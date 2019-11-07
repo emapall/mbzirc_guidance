@@ -9,10 +9,12 @@ global HALF_TIME_TOL;
 HALF_TIME_TOL=3;
 ERR_TOL_COEFF=2;
 a=10;
-t=1:0.1:15*2;
+t=0:0.1:15*2;
 %starts from upper right corner, spins cw, 
 %10 secs==1 spin +right arm and low r- up l arm
 %15 secs==more than 2 complete rounds
+samplesPerWin=25;
+
 
 l=length(t);
 devi=a/20; 
@@ -28,18 +30,36 @@ y=y+noisey;
 %     plot(x(i),y(i),"rx");
 %     pause(0.1);
 % end
-[err,p]=decider(25); 
+
+[err,p]=prelimAnalysis(samplesPerWin); 
 plot(err,"rx");
 
-candidati=zeros(1);
+figure;
+subplot(2,1,2);
+plot(x,y,"k+");
+global xl;
+global yl;
+yl=ylim;
+xl=xlim;
+global sp;
+sp=subplot(2,1,1);
+ylim(yl);
+xlim(xl);
+xlim manual;
+ylim manual;
+
+dists=zeros(2,2,1);
+%for esterno
 iGiro=1; %il primo giro è lo 0
 
 candidatiGiro=find(p<=p(1)+2*HALF_TIME_TOL);
 
-candidati(1,length(candidatiGiro))=0;
-candidati(1,:)=p(candidatiGiro);
 
-
+for i=1:length(candidatiGiro) %for candidato=p(candidatiGiro)
+   [temp, idxCorrels]=mobileWindowDist(samplesPerWin,iGiro,p(candidatiGiro(i)));
+   dists(length(temp),i,iGiro)=-42;
+   dists(:,i,iGiro)=temp;
+end
 
 function [x,y]=traj(a,t)
     x=a*2*sin(t)./(sin(t).^2+1.);
@@ -47,7 +67,7 @@ function [x,y]=traj(a,t)
 end
 
 
-function [err,periodIdxCandidates]=decider(nWin)
+function [err,periodIdxCandidates]=prelimAnalysis(nWin)
 %calcola la distanza (?) tra 2 finestre mobili
 %per ora è la SOMMA delle distanze euclidee tra i punti
 %err(1) è sempre 0
@@ -58,11 +78,11 @@ function [err,periodIdxCandidates]=decider(nWin)
     w0x=x(1:nWin);
     w0y=y(1:nWin);
     minPeriod=-1;
-    err=zeros(1,l);
+    err=-10*ones(1,l);
     for i=2:l-nWin
         winx=x(i:i+nWin-1);
         winy=y(i:i+nWin-1);
-        err(i)=sum(sqrt( (w0x-winx).^2+(w0y-winy).^2 ));
+        err(i)=distanceBetweenTwoWins((w0x-winx),(w0y-winy));
     end
     periodIdxCandidates=find(err<=ERR_TOL_COEFF*min(err(2:l-nWin)));  
     periodIdxCandidates=periodIdxCandidates(2:length(periodIdxCandidates));
@@ -75,21 +95,74 @@ function [err,periodIdxCandidates]=decider(nWin)
     %l'errore deve ancora salire
 end
 
-function [err]=mobileWindowDist(nWin,nGiro,idxStart)
-%resittuisce un vettore di distanza tra le finestre mobili 
-%"corrispondenti".
+function [err,idxCorrels]=mobileWindowDist(nWin,nGiro,idxStart)
+    %resittuisce un vettore di distanza tra le finestre mobili 
+    %"corrispondenti".
 
-%il problema grosso è trovare cosa siano queste "corrispondenze": come
-%criterio, scielgo il seguente (discutibile): per ogni punto, il punto di
-%traiettoria che gli dovrebbe essere "corrispondente" al giro prima è
-%quello che più si avvicina col suo timestamp temporale al timestamp del
-%giro dopo, meno il timestamp del periodo
+    %il problema grosso è trovare cosa siano queste "corrispondenze": come
+    %criterio, scielgo il seguente (discutibile): per ogni punto, il punto di
+    %traiettoria che gli dovrebbe essere "corrispondente" al giro prima è
+    %quello che più si avvicina col suo timestamp temporale al timestamp del
+    %giro dopo, meno il timestamp del periodo
 
-global x;
-global y;
-global t;
-global l;
-
-T=t(idxStart);
-if(l>(nGiro+1)/nGiro*idxStart-1+nWin-1)
+    global x;
+    global y;
+    global t;
+    global l;
     
+
+    %T=t(idxStart)/nGiro;
+    T=t(idxStart); 
+    %per sciegliere tra le 2, bisogna vedere se vogliamo fare il confronto
+    %tra il PRIMO giro e quiesto giro, o tra il giro prima e questo giro
+    %(cfr findNearestTemporalCorrespondant)
+    
+    %we cannot know in advance how many samples we will have for THIS turn
+    err=-42*ones(1,ceil(idxStart/nGiro) );
+
+    idx=idxStart;
+    idxCorr=-1;
+    idxCorrels=err;
+
+    while(t(idx)<T*(nGiro+1)/nGiro)
+        idxCorr=findNearestTemporalCorrespondant(idx,T);
+        err(idx-idxStart+1)=distanceBetweenTwoWins((x(idx:idx+nWin-1)-x(idxCorr:idxCorr+nWin-1)),(y(idx:idx+nWin-1)-y(idxCorr:idxCorr+nWin-1)));
+        
+        subplotWindows(x(idx:idx+nWin-1),y(idx:idx+nWin-1),x(idxCorr:idxCorr+nWin-1),y(idxCorr:idxCorr+nWin-1));
+        pause(0.05);
+        
+        idxCorrels(idx)=idxCorr;
+        idx=idx+1;
+    end
+end
+
+
+function [idxPrev]=findNearestTemporalCorrespondant(idxCurr,T)
+    global t;
+    a=t(1:idxCurr); %avoid successive loops
+    a=abs(a- (a(idxCurr)-T) );
+    idxPrev=find(a==min(a));
+    idxPrev=idxPrev(1);
+end
+   
+function [d]=distanceBetweenTwoWins(a,b)
+%return the distance between two vectors, according to the most suitable
+%method we can find
+    d=sum(sqrt( a.^2+b.^2 ));
+end
+
+function[]=subplotWindows(xcur,ycur,xpast,ypast)
+
+    global xl;
+    global yl;
+
+    plot(0,0);
+    hold on;
+    ylim(yl);
+    xlim(xl);
+    xlim manual;
+    ylim manual;
+    plot(xcur,ycur,"rx");
+    plot(xpast,ypast,"ks");
+    hold off;
+end
