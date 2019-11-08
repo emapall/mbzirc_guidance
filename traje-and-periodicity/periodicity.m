@@ -6,7 +6,7 @@ global t;
 global l;
 global ERR_TOL_COEFF;
 global HALF_TIME_TOL;
-HALF_TIME_TOL=3;
+HALF_TIME_TOL=3; %the tolerance with wich we consider that two points are "near"
 ERR_TOL_COEFF=2;
 a=10;
 t=0:0.1:15*2;
@@ -33,6 +33,10 @@ y=y+noisey;
 
 [err,p]=prelimAnalysis(samplesPerWin); 
 plot(err,"rx");
+hold on
+for i=p
+    plot(i,err(i),"ko");
+end
 
 figure;
 subplot(2,1,2);
@@ -48,18 +52,25 @@ xlim(xl);
 xlim manual;
 ylim manual;
 
-dists=zeros(2,2,1);
-%for esterno
-iGiro=1; %il primo giro è lo 0
+dists=zeros(1,2,1);
+cci=1; %comulative dandiate index, for readability
+iGiro=0; %il primo giro è lo 0, dento il while si parte da 1
 
-candidatiGiro=find(p<=p(1)+2*HALF_TIME_TOL);
-
-
-for i=1:length(candidatiGiro) %for candidato=p(candidatiGiro)
-   [temp, idxCorrels]=mobileWindowDist(samplesPerWin,iGiro,p(candidatiGiro(i)));
-   dists(length(temp),i,iGiro)=-42;
-   dists(:,i,iGiro)=temp;
+while(cci<=length(p))
+    candidatiGiro=find(abs(p-p(cci))<=2*HALF_TIME_TOL);
+    cci=cci+length(candidatiGiro);
+    iGiro=iGiro+1;
+    
+    for i=1:length(candidatiGiro) %for candidato=p(candidatiGiro)
+       [temp, idxCorrels]=mobileWindowDist(samplesPerWin,iGiro,p(candidatiGiro(i)));
+       dists(i,length(temp),iGiro)=-422;
+       length(temp)
+       dists(i,1:length(temp),iGiro)=temp;
+    end
 end
+
+figure;
+
 
 function [x,y]=traj(a,t)
     x=a*2*sin(t)./(sin(t).^2+1.);
@@ -84,7 +95,7 @@ function [err,periodIdxCandidates]=prelimAnalysis(nWin)
         winy=y(i:i+nWin-1);
         err(i)=distanceBetweenTwoWins((w0x-winx),(w0y-winy));
     end
-    periodIdxCandidates=find(err<=ERR_TOL_COEFF*min(err(2:l-nWin)));  
+    periodIdxCandidates=find(err<=ERR_TOL_COEFF*min(err(2:l-nWin)) & err>=0);  
     periodIdxCandidates=periodIdxCandidates(2:length(periodIdxCandidates));
     %LEAVE the first one apart;
     while(periodIdxCandidates(1)<=ERR_TOL_COEFF*min(err(2:l-nWin)))
@@ -124,12 +135,16 @@ function [err,idxCorrels]=mobileWindowDist(nWin,nGiro,idxStart)
     idxCorr=-1;
     idxCorrels=err;
 
-    while(t(idx)<T*(nGiro+1)/nGiro)
+    while(t(idx)<T*(nGiro+1)/nGiro & idx+nWin-1<=l)
         idxCorr=findNearestTemporalCorrespondant(idx,T);
-        err(idx-idxStart+1)=distanceBetweenTwoWins((x(idx:idx+nWin-1)-x(idxCorr:idxCorr+nWin-1)),(y(idx:idx+nWin-1)-y(idxCorr:idxCorr+nWin-1)));
+        xCur=x(idx:idx+nWin-1);
+        xPrev=x(idxCorr:idxCorr+nWin-1);
+        yCur=y(idx:idx+nWin-1);
+        yPrev=y(idxCorr:idxCorr+nWin-1);
+        err(idx-idxStart+1)=distanceBetweenTwoWins((xCur-xPrev),(xCur-xPrev));
         
         subplotWindows(x(idx:idx+nWin-1),y(idx:idx+nWin-1),x(idxCorr:idxCorr+nWin-1),y(idxCorr:idxCorr+nWin-1));
-        pause(0.05);
+        %pause(0.05);
         
         idxCorrels(idx)=idxCorr;
         idx=idx+1;
