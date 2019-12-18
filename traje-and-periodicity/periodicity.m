@@ -13,7 +13,7 @@ t=0:0.1:15*2;
 %starts from upper right corner, spins cw, 
 %10 secs==1 spin +right arm and low r- up l arm
 %15 secs==more than 2 complete rounds
-samplesPerWin=25;
+samplesPerWin=25; 
 
 
 l=length(t);
