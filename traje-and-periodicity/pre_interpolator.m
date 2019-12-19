@@ -9,7 +9,7 @@ global HALF_TIME_TOL;
 HALF_TIME_TOL=3; %the tolerance with wich we consider that two points are "near"
 ERR_TOL_COEFF=2;
 a=100;
-t=0:0.5:15*2;
+t=0:0.1:31.4;
 %starts from upper right corner, spins cw, 
 %10 secs==1 spin +right arm and low r- up l arm
 %15 secs==more than 2 complete rounds
@@ -24,75 +24,131 @@ noisex=normrnd(0,devi,1,l);
 noisey=normrnd(0,devi,1,l);
 x=x+noisex;
 y=y+noisey;
-
+%% 
 [err,p]=prelimAnalysis(samplesPerWin); 
+%% GRAFICI
 subplot(2,2,1);
-plot(err,"rx");
-hold on
+hold on;
+subplot(2,2,3);
+hold on;
+for i=1:l+1-samplesPerWin
+    subplot(2,2,1);
+    plot(i,err(i),"r.");
+    
+    subplot(2,2,3);
+    plot(x(i),y(i),"ko");
+    %pause(0.03);
+end
+
+for i=l-samplesPerWin+2:l
+    plot(x(i),y(i),"o");
+end
+subplot(2,2,1);
+hold on;
 for i=p
     plot(i,err(i),"ko");
 end
 
-idxTest=31;
-subplot(2,2,2);
-hold on;
-plot(err,"kx");
-
-distVicini=sqrt((x-x(idxTest)).^2 +((y-y(idxTest)).^2));
-distVicini(idxTest)=max(distVicini);
-minDist=min(distVicini);
-
-subplot(2,2,3);
-hold on;
-subplot(2,2,4);
-hold on;
-plot(x,y,"ko");
-
-for(toll_coeff=1:0.05:7)
-    %[toll_coeff sum(distVicini<=minDist*toll_coeff)]
-    subplot(2,2,3);
-    plot(toll_coeff,sum(distVicini<=minDist*toll_coeff),"r.");
-    
-    subplot(2,2,4);
-    if(toll_coeff==round(toll_coeff))
-        circle(x(idxTest),y(idxTest),toll_coeff*minDist);
-    end
-    %pause(0.5);
-end
-
-tolprova=3;
-
-pastCand=find(distVicini<=minDist*tolprova);
-subplot(2,2,1);
-for i=pastCand
-    if(i<=l-samplesPerWin+1)
-        plot(i,err(i),"bs");
-    else
-        plot(i,min(err(2:end))*2.5,"gs");
-    end
-end
+%% ANALISI GIRI
 
 tApproxGiri=zeros(1,2);
 tempidx=1;
 
 while(tempidx<=length(p))
-    temp=find(abs(p-p(tempidx))<=2*HALF_TIME_TOL);
-    tApproxGiri(end+1)=sum(t(p(temp)))/length(temp);
-    tempidx=tempidx+length(temp);
+    auxvar=find(abs(p-p(tempidx))<=2*HALF_TIME_TOL);
+    tApproxGiri(end+1)=sum(t(p(auxvar)))/length(auxvar);
+    tempidx=tempidx+length(auxvar);
 end
 tApproxGiri=tApproxGiri(2:end); %uno zero lo lascio che torna comodo fra poche righe
-nGiri=length(tApproxGiri)-1; %ha due zeri all'inizio per inizializzazione
+nGiri=length(tApproxGiri)-1; %NUMERO DI GIRI COMPLETATI 
+%ha due zeri all'inizio per inizializzazione 
+tApproxMid=tApproxGiri;
+tApproxMid(2:end)=(tApproxGiri(2:end)+tApproxGiri(1:end-1))/2;
+%%
+pause(1.5);
 
-giroPastCand=-1+zeros(1,length(pastCand));
-for i=1:length(pastCand)
+%% ANALISI SPAZIALE
+
+idxTest=l;
+distVicini=sqrt((x-x(idxTest)).^2 +((y-y(idxTest)).^2));
+distVicini(idxTest)=max(distVicini);
+minDist=min(distVicini);
+
+tolprova5=3;
+subplot(2,2,2);
+hold on;
+for(toll_coeff=1:0.05:7)
+    %[toll_coeff sum(distVicini<=minDist*toll_coeff)]
+    subplot(2,2,2);
+    plot(toll_coeff,sum(distVicini<=minDist*toll_coeff),"r.");
+    
+    subplot(2,2,3);
+    if(toll_coeff==round(toll_coeff))
+        circle(x(idxTest),y(idxTest),toll_coeff*minDist);
+    end
+    if(sum(distVicini<=minDist*toll_coeff)<=5 && sum(distVicini<=minDist*toll_coeff)>=3)
+        tolprova5=toll_coeff;
+    end
+end
+
+tolprova=3;
+
+pastCandSpaz=find(distVicini<=minDist*tolprova);
+subplot(2,2,1);
+hold on;
+for i=pastCandSpaz
+    if(i<=l-samplesPerWin+1)
+        plot(i,err(i),"bx");
+    else
+        plot(i,min(err(2:end))*2.5,"gs");
+    end
+end
+
+giroPastCand=-1+zeros(1,length(pastCandSpaz));
+for i=1:length(pastCandSpaz)
     for j=1:nGiri
-        if(tApproxGiri(j) < t(pastCand(i)) && t(pastCand(i))<=tApproxGiri(j+1))
+        if(tApproxGiri(j) < t(pastCandSpaz(i)) && t(pastCandSpaz(i))<=tApproxGiri(j+1))
             giroPastCand(i)=j-1;
         end
     end
 end
 
+%%
+%POSSIAMO SCIEGLIERE IL CRITERIO TEMPORALE COME BUON CRITERIO! QUELLO
+%SPAZIALE, A MENO DI NON PRENDERE GRANDI RAGGI, NON FUNZIONA BENISSIMO
+%% ANALISI TEMPORALE: SE  varianza sul periodo è troppo alta, allora non si usa
+%if (varianza(tApproxGiri)<=soglia)
+T=mean(diff(tApproxGiri));
+percGiro=(t(idxTest)-tApproxGiri(end))/T;
 
+pastCandTemp=zeros(1,nGiri); %se un giro è appena appena completato
+subplot(2,2,1);
+for i=1:nGiri%-1
+    tCorrispIdeale=tApproxGiri(i)*(1-percGiro)+tApproxGiri(i+1);
+    auxvar=abs(t-tCorrispIdeale);
+    pastCandTemp(i)= min(find(auxvar==min(auxvar)));
+    %va gestito il caso in cuici siano 2 elementi che siano ESATTAMENTE il min
+    %può capitare sia quasi 0, occhio agli errori numerici!
+    plot(pastCandTemp(i),err(pastCandTemp(i)),"ys");
+end
+%% costruzione insieme di punti
+pastCand=pastCandTemp;
+xWin=x(end-samplesPerWin+1:end);
+yWin=y(end-samplesPerWin+1:end);
+
+subplot(2,2,4);
+hold on;
+for i=pastCand
+    auxvar=x(i-samplesPerWin+1:i+samplesPerWin-1);
+    xWin(end+1:end+length(auxvar))=auxvar;
+    auxvar=y(i-samplesPerWin+1:i+samplesPerWin-1);
+    yWin(end+1:end+length(auxvar))=auxvar;
+    
+    plot(x(i-samplesPerWin+1:i+samplesPerWin-1),y(i-samplesPerWin+1:i+samplesPerWin-1),"x:");
+    pause(1);
+end
+
+%% funzioni
 function circle(cx,cy,r)
 %x and y are the coordinates of the center of the circle
 %r is the radius of the circle
