@@ -22,6 +22,7 @@ t=0:SIM_TIME_STEP:TOTAL_SIM_TIME;
 %starts from upper right corner, spins cw, 
 %10 secs==1 spin +right arm and low r- up l arm
 %15 secs==more than 2 complete rounds
+global samplesPerWin
 samplesPerWin=8; 
 
 
@@ -36,26 +37,19 @@ y=y+noisey;
 %% 
 [err,p]=prelimAnalysis(samplesPerWin); 
 %% GRAFICI
-subplot(2,2,1);
+fig0=figure(); %contiene grafico errore e numero di vicini in funz del raggio
+subplot(2,1,1);
 hold on;
-subplot(2,2,3);
-hold on;
-for i=1:l+1-samplesPerWin
-    subplot(2,2,1);
-    plot(t(i),err(i),"r.");
-    %TODO FIX: stampare coi tempi, non con gli indici
-    subplot(2,2,3);
-    plot(x(i),y(i),"ko");
-    %pause(0.03);
-end
-
-for i=l-samplesPerWin+2:l
-    plot(x(i),y(i),"o");
-end
-subplot(2,2,1);
-hold on;
+plot(t(1:l+1-samplesPerWin),err(1:l+1-samplesPerWin),"r.");
 for i=p
     plot(t(i),err(i),"ys");
+end
+
+fig1=figure(); %traiettoria con punti individuati dai vari criteri
+hold on;
+plot(x(1:l+1-samplesPerWin),y(1:l+1-samplesPerWin),"k.");
+for i=l-samplesPerWin+2:l
+    plot(x(i),y(i),"o");
 end
 
 %% ANALISI GIRI
@@ -77,138 +71,141 @@ tApproxMid=tApproxGiri;
 tApproxMid(2:end)=(tApproxGiri(2:end)+tApproxGiri(1:end-1))/2;
 %%
 pause(1.5);
-
-%% ANALISI SPAZIALE
-
 idxTest=l;
-distVicini=sqrt((x-x(idxTest)).^2 +((y-y(idxTest)).^2));
-distVicini(idxTest)=max(distVicini);
-minDist=min(distVicini);
 
-tolprova5=3;
-subplot(2,2,2);
-hold on;
-for(toll_coeff=1:0.05:7)
-    %[toll_coeff sum(distVicini<=minDist*toll_coeff)]
-    subplot(2,2,2);
-    plot(toll_coeff,sum(distVicini<=minDist*toll_coeff),"r.");
-    
-    subplot(2,2,3);
-    if(toll_coeff==round(toll_coeff))
-        circle(x(idxTest),y(idxTest),toll_coeff*minDist);
-    end
-    if(sum(distVicini<=minDist*toll_coeff)<=5 && sum(distVicini<=minDist*toll_coeff)>=3)
-        tolprova5=toll_coeff;
-    end
-end
+% %% ANALISI SPAZIALE
+% 
+% 
+% distVicini=sqrt((x-x(idxTest)).^2 +((y-y(idxTest)).^2));
+% distVicini(idxTest)=max(distVicini);
+% minDist=min(distVicini);
+% 
+% tolprova5=3;
+% subplot(2,1,2);
+% hold on;
+% for(toll_coeff=1:0.05:7)
+%     %[toll_coeff sum(distVicini<=minDist*toll_coeff)]
+%     subplot(2,1,2);
+%     plot(toll_coeff,sum(distVicini<=minDist*toll_coeff),"r.");
+%     
+%     subplot(2,1,3);
+%     if(toll_coeff==round(toll_coeff))
+%         circle(x(idxTest),y(idxTest),toll_coeff*minDist);
+%     end
+%     if(sum(distVicini<=minDist*toll_coeff)<=5 && sum(distVicini<=minDist*toll_coeff)>=3)
+%         tolprova5=toll_coeff;
+%     end
+% end
+% 
+% tolprova=3;
+% 
+% pastCandSpaz=find(distVicini<=minDist*tolprova);
+% subplot(2,1,1);
+% hold on;
+% for i=pastCandSpaz
+%     if(i<=l-samplesPerWin+1)
+%         plot(t(i),err(i),"bx");
+%     else
+%         plot(t(i),min(err(2:end))*2.5,"gs");
+%     end
+% end
+% 
+% giroPastCand=-1+zeros(1,length(pastCandSpaz));
+% for i=1:length(pastCandSpaz)
+%     for j=1:nGiri
+%         if(tApproxGiri(j) < t(pastCandSpaz(i)) && t(pastCandSpaz(i))<=tApproxGiri(j+1))
+%             giroPastCand(i)=j-1;
+%         end
+%     end
+% end
 
-tolprova=3;
+%% ANALISI 1: QUASI-DISTANZA
+%si trova i primi vicini per ogni giro, se ne vede la percentuale giro e
+%prende la MEDIA delle percGiro per valutare la percGiro attuale.
 
-pastCandSpaz=find(distVicini<=minDist*tolprova);
-subplot(2,2,1);
-hold on;
-for i=pastCandSpaz
-    if(i<=l-samplesPerWin+1)
-        plot(t(i),err(i),"bx");
-    else
-        plot(t(i),min(err(2:end))*2.5,"gs");
-    end
-end
+%TODO FIX: INVECE DEL PRIMO VICINO, PRENDERE UNA SOVRAPPOSIZIONE DI
+%FINESTRE;
+%TODO FIX: SERVE DI DISINGUERE I DUE RAMI DELLA CROCE; ESISTONO CASI in cui
+%becca come primo vicino il ramo della croce sbagliata!
 
-giroPastCand=-1+zeros(1,length(pastCandSpaz));
-for i=1:length(pastCandSpaz)
-    for j=1:nGiri
-        if(tApproxGiri(j) < t(pastCandSpaz(i)) && t(pastCandSpaz(i))<=tApproxGiri(j+1))
-            giroPastCand(i)=j-1;
-        end
-    end
-end
-
-%%
-%POSSIAMO SCIEGLIERE IL CRITERIO TEMPORALE COME BUON CRITERIO! QUELLO
-%SPAZIALE, A MENO DI NON PRENDERE GRANDI RAGGI, NON FUNZIONA BENISSIMO
-%% ANALISI TEMPORALE: SE  varianza sul periodo è troppo alta, allora non si usa
-%if (varianza(tApproxGiri)<=soglia)
-T=mean(diff(tApproxGiri));
+%NOTA: 
+%T=mean(diff(tApproxGiri));
 %percGiro=(t(idxTest)-tApproxGiri(end))/T;
-%ti piacissi: è un criterio non buono; Usiamo il seguente:
-%trova il corrispondente spaziale più vicino all'ultimo campione
-%registrato, per ogni giro passato ; Per ognuno
-% di quei campioni corrispondenti calcola la percentuale di
-%completamento giro, e ci fa la media sopra
-percGiro=-1+zeros(1,nGiri);
-pastCandQuasiDist=-1*ones(1,nGiri);
+%non funziona
 
-subplot(2,2,3);
+percGiro=-1+zeros(1,nGiri);
+idxPastCorr=-1*ones(1,nGiri);
+
+figure(fig1);
+hold on;
 for iGiro=1:nGiri
-    idxPrev=findNearestSpatialCorrespondant(x(idxTest),y(idxTest),iGiro);
-    pastCandQuasiDist(iGiro)=idxPrev;    
+    %idxPrev=findNearestSpatialCorrespondant(x(idxTest),y(idxTest),iGiro);
+    %non funziona: andiamo di closest window
+    idxPastCorr(iGiro)=idxPrev;    
     plot(x(idxPrev),y(idxPrev),"rx");
     percGiro(iGiro)=(t(idxPrev)-tApproxGiri(iGiro))/(tApproxGiri(iGiro+1)-tApproxGiri(iGiro));
-    assert(percGiro(iGiro)>=0 &&percGiro(iGiro)<=1);   
+    if(~(percGiro(iGiro)>=0 &&percGiro(iGiro)<=1))
+        disp("inizio")
+        findNearestTemporalTimestap(tApproxGiri(iGiro))
+        disp("fine")
+        findNearestTemporalTimestap(tApproxGiri(iGiro+1))
+    end
 end
    
 percLast=mean(percGiro);
-pastCandTemp=zeros(1,nGiri); %se un giro è appena appena completato
+pastCandQuasiDist=zeros(1,nGiri); %se un giro è appena appena completato
 
 for i=1:nGiri%-1
-    tCorrispIdeale=tApproxGiri(i)*(1-percLast)+tApproxGiri(i+1);
+    tCorrispIdeale=tApproxGiri(i)*(1-percLast)+percLast*tApproxGiri(i+1);
     auxvar=abs(t-tCorrispIdeale);
-    pastCandTemp(i)= min(find(auxvar==min(auxvar)));
+    pastCandQuasiDist(i)= min(find(auxvar==min(auxvar)));
     %va gestito il caso in cuici siano 2 elementi che siano ESATTAMENTE il min
     %può capitare sia quasi 0, occhio agli errori numerici!
-    subplot(2,2,1);
-    if(pastCandTemp(i)<=l-samplesPerWin-1)
-        plot(pastCandTemp(i),err(pastCandTemp(i)),"kh");
-    end
-    subplot(2,2,3);
-    plot(x(i),y(i),"rh");
-    
-end
-%% costruzione insieme di punti
-pastCand=pastCandTemp;
-xWin=x(end-samplesPerWin+1:end);
-yWin=y(end-samplesPerWin+1:end);
 
-subplot(2,2,4);
+end
+
+
+figure(fig0);
+subplot(2,1,1);
 hold on;
-for i=pastCand
-    auxvar=x(i-samplesPerWin+1:i+samplesPerWin-1);
-    xWin(end+1:end+length(auxvar))=auxvar;
-    auxvar=y(i-samplesPerWin+1:i+samplesPerWin-1);
-    yWin(end+1:end+length(auxvar))=auxvar;
-    
-    plot(x(i-samplesPerWin+1:i+samplesPerWin-1),y(i-samplesPerWin+1:i+samplesPerWin-1),"x:");
-    pause(1);
-end
-
-%% misto vs temp
-g=figure;
-hold on;
-plot(x,y,"k.");
-plot(x(idxTest),y(idxTest),"bo");
-plot(x(pastCandTemp),y(pastCandTemp),"rx:");
-plot(x(pastCandQuasiDist),y(pastCandQuasiDist),"gs:");
-
-for i=pastCandTemp
-    auxvar=x(i-samplesPerWin+1:i+samplesPerWin-1);
-    xWin(end+1:end+length(auxvar))=auxvar;
-    auxvar=y(i-samplesPerWin+1:i+samplesPerWin-1);
-    yWin(end+1:end+length(auxvar))=auxvar;
-    
-    plot(x(i-samplesPerWin+1:i+samplesPerWin-1),y(i-samplesPerWin+1:i+samplesPerWin-1),"r:");
-    pause(1);
-end
-
 for i=pastCandQuasiDist
-    auxvar=x(i-samplesPerWin+1:i+samplesPerWin-1);
-    xWin(end+1:end+length(auxvar))=auxvar;
-    auxvar=y(i-samplesPerWin+1:i+samplesPerWin-1);
-    yWin(end+1:end+length(auxvar))=auxvar;
-    
-    plot(x(i-samplesPerWin+1:i+samplesPerWin-1),y(i-samplesPerWin+1:i+samplesPerWin-1),"g:");
-    pause(1);
+    if(i<=l-samplesPerWin-1)
+        plot(t(i),err(i),"kh");
+    end
 end
+figure(fig1);
+hold on;
+plot(x(pastCandQuasiDist),y(pastCandQuasiDist),"rh");
+%% costruzione insieme di punti: 1 quasi-distanza 
+pastCand=pastCandQuasiDist;
+res1x=x(end-samplesPerWin+1:end);
+res1y=y(end-samplesPerWin+1:end);
+resQuasiDist=zeros(1,2);
+flag=true;
+
+resfig1=figure();
+hold on;
+title("analisi 1 quasi dist");
+plot(res1x,res1y);
+
+for i=pastCand
+    lb=max(0,i-samplesPerWin+1);
+    rb=min(i+samplesPerWin-1,findNearestTemporalTimestap(tApproxGiri(nGiri)));
+    %i left e right bounds sono tra l'inizio di tutto e la fine dell'ultimo
+    %giro
+    auxvar=x(lb:rb);
+    res1x(end+1:end+length(auxvar))=auxvar;
+    auxvar=y(lb:rb);
+    res1y(end+1:end+length(auxvar))=auxvar;
+    if(flag)
+        resQuasiDist=auxvar;
+        flag=false;
+    else
+        resQuasiDist(end+1:end+length(auxvar))=auxvar;
+    end
+    plot(x(lb:rb),y(lb:rb),"x:");
+end
+plot(x,y,"k.");
 
 
 %% funzioni
@@ -294,6 +291,29 @@ function [idxPrev]=findNearestSpatialCorrespondant(xP,yP,giro)
     ylocal=y(inizio:fine);
     
     aux=sqrt((xlocal-xP).^2 +(ylocal-yP).^2);
+    idxPrev=find(aux==min(aux));
+    idxPrev=idxPrev(1)+inizio-1;
+end
+
+function [idxPrev]=findClosestPastWindow(idxTest,giro)
+%trova il punto più vicono al punto in input
+    global x;
+    global t;
+    global y;
+    global tApproxGiri;
+    global samplesPerWin;
+    inizio=findNearestTemporalTimestap(tApproxGiri(giro));
+    fine=findNearestTemporalTimestap(tApproxGiri(giro+1));
+    assert(fine-inizio>=samplesPerWin+5);
+    
+    distlocal=-1*ones(fine-inizio+1-samplesPerWin);
+    w0x=x(idxTest-samplesPerWin+1:idxTest);
+    w0y=y(idxTest-samplesPerWin+1:idxTest);
+    for i=inizio-1+samplesPerWin:length(distlocal)
+        wx=x(i-samplesPerWin+1:i);
+        wy=y(i-samplesPerWin+1:i);
+        %dio cane
+        DIO CANE
     idxPrev=find(aux==min(aux));
     idxPrev=idxPrev(1)+inizio-1;
 end
