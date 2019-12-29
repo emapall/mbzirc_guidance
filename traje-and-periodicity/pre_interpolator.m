@@ -141,8 +141,8 @@ hold on;
 for iGiro=1:nGiri
     %idxPrev=findNearestSpatialCorrespondant(x(idxTest),y(idxTest),iGiro);
     %non funziona: andiamo di closest window
-    idxPastCorr(iGiro)=idxPrev;    
-    plot(x(idxPrev),y(idxPrev),"rx");
+    [idxPrev, distFinestre]=findNearestPastWindow(idxTest,iGiro);
+    idxPastCorr(iGiro)=idxPrev;    % TODO: + SAMPLESPERWIN (-1): questo è l'inizio della finestra
     percGiro(iGiro)=(t(idxPrev)-tApproxGiri(iGiro))/(tApproxGiri(iGiro+1)-tApproxGiri(iGiro));
     if(~(percGiro(iGiro)>=0 &&percGiro(iGiro)<=1))
         disp("inizio")
@@ -150,6 +150,10 @@ for iGiro=1:nGiri
         disp("fine")
         findNearestTemporalTimestap(tApproxGiri(iGiro+1))
     end
+    
+    figure(fig1);
+    hold on;
+    plot(x(idxPrev:idxPrev+samplesPerWin-1),y(idxPrev:idxPrev+samplesPerWin-1),"x-");
 end
    
 percLast=mean(percGiro);
@@ -295,7 +299,7 @@ function [idxPrev]=findNearestSpatialCorrespondant(xP,yP,giro)
     idxPrev=idxPrev(1)+inizio-1;
 end
 
-function [idxPrev]=findClosestPastWindow(idxTest,giro)
+function [idxPrev, distlocal]=findNearestPastWindow(idxTest,giro)
 %trova il punto più vicono al punto in input
     global x;
     global t;
@@ -305,17 +309,49 @@ function [idxPrev]=findClosestPastWindow(idxTest,giro)
     inizio=findNearestTemporalTimestap(tApproxGiri(giro));
     fine=findNearestTemporalTimestap(tApproxGiri(giro+1));
     assert(fine-inizio>=samplesPerWin+5);
-    
-    distlocal=-1*ones(fine-inizio+1-samplesPerWin);
+    if(giro==1)
+        assert(inizio==1);
+        %inizio l'analisi a samplesPerWin (da 1 a 8 fanno 8 campioni)
+        distlocal=-1*ones(fine-samplesPerWin+1);
+    else
+        distlocal=-1*ones(fine-inizio); %+1-1; non dipende da nWin con l'overlap
+         %il +1 perchè ci va, il -1 perchè l'INIZIO E' ESCLUSO: l'abbiamo
+         %già contato al giro prima
+    end
+    %voglio che anche l'ultima finestra del giro sia inclusa comunque, e
+    %che ai giri successivi ci sia un (nWin) overlap col giro prima.
+    %Formalmente dovrebbe funzionare, TODO: verificare
+
     w0x=x(idxTest-samplesPerWin+1:idxTest);
     w0y=y(idxTest-samplesPerWin+1:idxTest);
-    for i=inizio-1+samplesPerWin:length(distlocal)
-        wx=x(i-samplesPerWin+1:i);
-        wy=y(i-samplesPerWin+1:i);
-        %dio cane
-        DIO CANE
-    idxPrev=find(aux==min(aux));
-    idxPrev=idxPrev(1)+inizio-1;
+    figure();
+
+    for i=1:length(distlocal) %i è il PIù INDIETRO NELLA FINESTRA!
+        if(giro==1)
+            wx=x(i:i+samplesPerWin-1);
+            wy=y(i:i+samplesPerWin-1);
+        else
+            wx=x(i+inizio-samplesPerWin+1:i+inizio);
+            wy=y(i+inizio-samplesPerWin+1:i+inizio);
+        end
+        assert(length(wx)==samplesPerWin);
+        distlocal(i)=distanceBetweenTwoWins((wx-w0x),(wy-w0y));
+        
+        plot(x,y,"k.");
+        title("g "+ num2str(giro)+" p "+num2str(i)); 
+        hold on; %plot, tilolo, hold on: altrimenti non si pulisce ne il grafico ne il titolo
+        plot(w0x,w0y,"bs-");
+        plot(wx,wy,"xr-");
+        hold off;
+        pause(0.2);
+
+    end
+    idxPrev=find(distlocal==min(distlocal));
+    if(giro==1)
+        idxPrev=idxPrev(1);
+    else
+        idxPrev=idxPrev(1)+inizio;
+    end
 end
 
 function [idx]=findNearestTemporalTimestap(tP)
